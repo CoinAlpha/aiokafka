@@ -15,6 +15,7 @@ from kafka.protocol.admin import (
     SaslHandShakeRequest, SaslHandShakeResponse, SaslAuthenticateRequest,
     SaslAuthenticateResponse
 )
+from kafka.protocol.produce import ProduceRequest_v0 as ProduceRequest
 
 from aiokafka.conn import AIOKafkaConnection, create_conn, VersionInfo
 from aiokafka.errors import (
@@ -23,7 +24,6 @@ from aiokafka.errors import (
 )
 from aiokafka.record.legacy_records import LegacyRecordBatchBuilder
 from ._testutil import KafkaIntegrationTestCase, run_until_complete
-from aiokafka.protocol.produce import ProduceRequest_v0 as ProduceRequest
 from aiokafka.util import get_running_loop
 
 
@@ -249,11 +249,13 @@ class ConnIntegrationTest(KafkaIntegrationTestCase):
 
     @run_until_complete
     async def test_semi_broken_connection(self):
-        """This testcase tries to replicate what happens on connection to semi-broken AWS MSK broker.
+        """This testcase tries to replicate what happens on connection to semi-broken
+        AWS MSK broker.
 
-        Connection could be established, but then some timeout occurs, and connection is not being destroyed
-        properly, producing 'Unclosed AIOKafkaConnection' and calling loop exception handler, which could lead to
-        failing the whole app for example if we're running via aiorun with `stop_on_unhandled_errors=True`.
+        Connection could be established, but then some timeout occurs, and connection is
+        not being destroyed properly, producing 'Unclosed AIOKafkaConnection' and
+        calling loop exception handler, which could lead to failing the whole app for
+        example if we're running via aiorun with `stop_on_unhandled_errors=True`.
         """
         host, port = self.kafka_host, self.kafka_port
 
@@ -272,7 +274,8 @@ class ConnIntegrationTest(KafkaIntegrationTestCase):
 
         with mock.patch.object(AIOKafkaConnection, 'connect', mock_connect):
             with mock.patch.object(AIOKafkaConnection, 'close', mock_close):
-                await create_conn(host, port)
+                with pytest.raises(asyncio.TimeoutError):
+                    await create_conn(host, port)
                 self.assertTrue(close_called)
 
     def test_connection_version_info(self):
